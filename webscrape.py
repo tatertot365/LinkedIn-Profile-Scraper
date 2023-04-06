@@ -65,8 +65,7 @@ def get_profile_data(soup):
 
     return [name, current_position, current_picture]
 
-
-# program starts here
+# login to linkedin
 driver = login()
 
 # list of profiles to scrape using the linkedin profile url
@@ -84,3 +83,6 @@ for name in profile_list:
 
 # save the data to a csv file
 profile_data_df.to_csv('profile_data.csv', index=False)
+
+# close the browser
+driver.quit()
