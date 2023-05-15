@@ -45,13 +45,13 @@ def get_soup(driver):
     return soup
 
 # get current picture
-def get_current_picture(soup):
+"""def get_current_picture(soup):
     try:
         current_picture = soup.find('img', {'class': 'pv-top-card-profile-picture__image pv-top-card-profile-picture__image--show evi-image ember-view'})['src']
     except:
         current_picture = None
 
-    return current_picture
+    return current_picture"""
 
 # get name
 def get_name(soup):
@@ -87,7 +87,7 @@ def get_current_position(soup, name):
             if 'Present' in potential:
 
                 ############################# This is where you need to add a name if it is not getting the position correctly #############################
-                if name in ["Corrine Richter"]:
+                if name in ["Corrine Richter", "Juan Jorge Poémape"]:
                     current_position = jobs_array[-2]
                 else:
                     current_position = jobs_array[-3]
@@ -149,20 +149,21 @@ def get_graduation_year(soup):
 def get_profile_data(soup):
 
     # get the profile data calling the functions above
-    current_picture = get_current_picture(soup)
+    # current_picture = get_current_picture(soup)
     name = get_name(soup)
     current_company = get_current_company(soup)
     current_position = get_current_position(soup, name)
     graduation_year = get_graduation_year(soup)
 
-    return [current_picture, name, current_position, current_company, graduation_year]
+    # return [current_picture, name, current_position, current_company, graduation_year]
+    return [name, current_position, current_company, graduation_year]
 
 # login to linkedin
 driver = login()
 
 # list of profiles to scrape using the linkedin profile url
 profile_list = imported_profile_list
-profile_data_df = pd.DataFrame(columns=['current_picture', 'name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
+profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
 
 # loop through each profile in the list
 for name in profile_list:
