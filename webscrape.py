@@ -179,6 +179,9 @@ for name in profile_list:
     profile_data.append(profile_url)
     profile_data_df.loc[name] = profile_data
 
+# sort the dataframe by name from a to z
+profile_data_df.sort_values(by=['name'], inplace=True)
+
 # save the data to a csv file
 profile_data_df.to_csv('profile_data.csv', index=False)
 
