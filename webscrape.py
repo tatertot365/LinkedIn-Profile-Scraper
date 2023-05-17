@@ -94,7 +94,7 @@ def get_current_position(soup, name):
                 break
 
     except:
-        current_position = 'None'
+        current_position = None
 
     # clean up current position
     current_position = current_position.replace('\n', '')
@@ -183,7 +183,7 @@ for name in profile_list:
 profile_data_df.sort_values(by=['name'], inplace=True)
 
 # save the data to a csv file
-profile_data_df.to_csv('profile_data.csv', index=False)
+profile_data_df.to_csv('alumni_profiles.csv', index=False)
 
 # close the browser
 driver.quit()
