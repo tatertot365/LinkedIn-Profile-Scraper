@@ -75,7 +75,7 @@ def get_name(soup):
     return name
 
 # get current position
-def get_current_position(person, soup):
+def get_current_position(person, soup, name):
 
     if person is None:
         try:
@@ -92,10 +92,9 @@ def get_current_position(person, soup):
                     jobs_array.append(potential)
 
                 if 'Present' in potential:
-
                     ############################# This is where you need to add a name if it is not getting the position correctly #############################
                     if name in ["Corrine Richter", "Juan Jorge Poémape"]:
-                        current_position = jobs_array[-1]
+                        current_position = jobs_array[-2]
                     else:
                         current_position = jobs_array[-3]
                     break
@@ -180,7 +179,7 @@ def get_profile_data(soup, person):
     # get the profile data calling the functions above
     # current_picture = get_current_picture(soup)
     name = get_name(soup)
-    current_position = get_current_position(person, soup)
+    current_position = get_current_position(person, soup, name)
     current_company = get_current_company(person, soup)
     graduation_year = get_graduation_year(soup)
 
