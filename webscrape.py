@@ -46,6 +46,7 @@ def get_soup(driver):
 
     return soup
 
+# function not currently needed but may be useful in the future
 # get current picture
 """def get_current_picture(soup):
     try:
@@ -58,6 +59,7 @@ def get_soup(driver):
 # get name
 def get_name(soup):
 
+    # get the name from the profile page finding the header with the name
     try:
         name = soup.find('h1', {'class': 'text-heading-xlarge'}).text
 
@@ -77,6 +79,7 @@ def get_name(soup):
 # get current position
 def get_current_position(person, soup, name):
 
+    # get the current position from the profile page if a person object is not passed in using a linkedin scraper package
     if person is None:
         try:
             experience_section = soup.find('div', {'id': 'experience'})
@@ -93,6 +96,7 @@ def get_current_position(person, soup, name):
 
                 if 'Present' in potential:
                     ############################# This is where you need to add a name if it is not getting the position correctly #############################
+                    # this is because their job, due to the way their profile is, is the second to last element in the array
                     if name in ["Corrine Richter", "Juan Jorge Poémape"]:
                         current_position = jobs_array[-2]
                     else:
@@ -101,6 +105,7 @@ def get_current_position(person, soup, name):
         except:
             current_position = None
 
+    # get the current position from the person object if it is passed in
     else:
         try:
             current_position = person.experiences[0].position_title
@@ -118,6 +123,7 @@ def get_current_position(person, soup, name):
 # get current company
 def get_current_company(person, soup):
 
+    # get the current company from the profile page if a person object is not passed in using a linkedin scraper package
     if person is None:
         try:
             current_company = soup.find('div', {'class': 'inline-show-more-text inline-show-more-text--is-collapsed inline-show-more-text--is-collapsed-with-line-clamp inline'}).text
@@ -127,10 +133,13 @@ def get_current_company(person, soup):
             current_company = current_company.strip()
         except:
             current_company = None
+    
+    # get the current company from the person object if it is passed in
     else:
         try:
             current_company = person.experiences[0].institution_name
 
+            # clean up current company by eliminating the job status
             if current_company[-9:] in ["Full-time", "Part-time", "Freelance"]:
                 current_company = current_company[:-12]
             elif current_company[-13:] == "Self-employed":
@@ -204,6 +213,7 @@ for name in profile_list:
     soup = get_soup(driver)
     sleep(5)
 
+    # get the person object from the linkedin scraper package or set it to none if it fails
     try:
         person = Person(profile_url, driver=driver, close_on_complete=False)
     except:
