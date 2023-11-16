@@ -6,13 +6,15 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from linkedin_scraper import Person, actions
 from creds import linkedin_username, linkedin_password, imported_profile_list
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 # this logs into linkedin
 def login():
     opts = Options()
 
     # This sets up the driver and opens the browser
-    driver = webdriver.Chrome(options=opts, executable_path= "chromedriver")
+    driver = webdriver.Chrome(options=opts, executable_path=ChromeDriverManager().install())
 
     driver.get("https://www.linkedin.com/")
     sleep(5)
@@ -195,40 +197,42 @@ def get_profile_data(soup, person):
     # return [current_picture, name, current_position, current_company, graduation_year]
     return [name, current_position, current_company, graduation_year]
 
-# login to linkedin
-driver = login()
 
-# list of profiles to scrape using the linkedin profile url
-profile_list = imported_profile_list
-profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
+if __name__ == "__main__":
+    # login to linkedin
+    driver = login()
 
-# loop through each profile in the list
-for name in profile_list:
-    driver.get("https://www.linkedin.com/in/" + name)
-    sleep(5)
+    # list of profiles to scrape using the linkedin profile url
+    profile_list = imported_profile_list
+    profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
 
-    profile_url = "https://www.linkedin.com/in/" + name
+    # loop through each profile in the list
+    for name in profile_list:
+        driver.get("https://www.linkedin.com/in/" + name)
+        sleep(5)
 
-    # get the page source and parse it with beautiful soup
-    soup = get_soup(driver)
-    sleep(5)
+        profile_url = "https://www.linkedin.com/in/" + name
 
-    # get the person object from the linkedin scraper package or set it to none if it fails
-    try:
-        person = Person(profile_url, driver=driver, close_on_complete=False)
-    except:
-        person = None
+        # get the page source and parse it with beautiful soup
+        soup = get_soup(driver)
+        sleep(5)
 
-    # get the profile data and add it to the dataframe
-    profile_data = get_profile_data(soup, person)
-    profile_data.append(profile_url)
-    profile_data_df.loc[name] = profile_data
+        # get the person object from the linkedin scraper package or set it to none if it fails
+        try:
+            person = Person(profile_url, driver=driver, close_on_complete=False)
+        except:
+            person = None
 
-# sort the dataframe by name from a to z
-profile_data_df.sort_values(by=['name'], inplace=True)
+        # get the profile data and add it to the dataframe
+        profile_data = get_profile_data(soup, person)
+        profile_data.append(profile_url)
+        profile_data_df.loc[name] = profile_data
 
-# save the data to a csv file
-profile_data_df.to_csv('alumni_profiles.csv', index=False)
+    # sort the dataframe by name from a to z
+    profile_data_df.sort_values(by=['name'], inplace=True)
 
-# close the browser
-driver.quit()
+    # save the data to a csv file
+    profile_data_df.to_csv('profile_data.csv', index=False)
+
+    # close the browser
+    driver.quit()
