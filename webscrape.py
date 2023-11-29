@@ -96,6 +96,7 @@ def get_current_position(person, soup, name):
 
                 if potential not in jobs_array:
                     jobs_array.append(potential)
+                    print(jobs_array)
 
                 if 'Present' in potential:
                     ############################# This is where you need to add a name if it is not getting the position correctly #############################
@@ -105,6 +106,9 @@ def get_current_position(person, soup, name):
                     else:
                         current_position = jobs_array[-3]
                     break
+
+            if current_position == None:
+                current_position = jobs_array[2]
         except:
             current_position = None
 
