@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from linkedin_scraper import Person, actions
+from linkedin_scraper import Person
 from creds import linkedin_username, linkedin_password, imported_profile_list
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -14,12 +14,13 @@ def login():
     opts = Options()
 
     # This sets up the driver and opens the browser
-    driver = webdriver.Chrome(options=opts, executable_path=ChromeDriverManager().install())
+    # driver = webdriver.Chrome(options=opts, executable_path=ChromeDriverManager().install())
+    driver = webdriver.Chrome(options=opts)
 
     driver.get("https://www.linkedin.com/")
     sleep(5)
 
-    # username is submitedd
+    # username is submitted
     username = driver.find_element(By.ID, 'session_key')
     username.send_keys(linkedin_username)
 
@@ -228,8 +229,13 @@ if __name__ == "__main__":
         profile_data.append(profile_url)
         profile_data_df.loc[name] = profile_data
 
-    # sort the dataframe by name from a to z
-    profile_data_df.sort_values(by=['name'], inplace=True)
+    def get_last_name(name):
+        return name.split()[-1]
+    
+
+    profile_data_df['last_name'] = profile_data_df['name'].apply(get_last_name)
+    profile_data_df.sort_values(by=['last_name'], inplace=True)
+    profile_data_df.drop('last_name', axis=1, inplace=True)
 
     # save the data to a csv file
     profile_data_df.to_csv('profile_data.csv', index=False)
