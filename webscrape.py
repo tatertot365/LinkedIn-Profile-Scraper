@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.options import Options
 from linkedin_scraper import Person
 from creds import linkedin_username, linkedin_password, imported_profile_list
 from webdriver_manager.chrome import ChromeDriverManager
+import re
 
 
 # this logs into linkedin
@@ -17,17 +18,17 @@ def login():
     # driver = webdriver.Chrome(options=opts, executable_path=ChromeDriverManager().install())
     driver = webdriver.Chrome(options=opts)
 
-    driver.get("https://www.linkedin.com/")
+    driver.get("https://www.linkedin.com/login")
     sleep(5)
 
     # username is submitted
-    username = driver.find_element(By.ID, 'session_key')
+    username = driver.find_element(By.ID, 'username')
     username.send_keys(linkedin_username)
 
     sleep(0.5)
 
     # Password is submitted
-    password = driver.find_element(By.ID, 'session_password')
+    password = driver.find_element(By.ID, 'password')
     password.send_keys(linkedin_password)
 
     sleep(0.5)
@@ -37,7 +38,7 @@ def login():
     # Sign in button is clicked
     sign_in_button.click()
 
-    sleep(15)
+    sleep(10)
 
     return driver
 
@@ -49,155 +50,119 @@ def get_soup(driver):
 
     return soup
 
-# function not currently needed but may be useful in the future
-# get current picture
-"""def get_current_picture(soup):
-    try:
-        current_picture = soup.find('img', {'class': 'pv-top-card-profile-picture__image pv-top-card-profile-picture__image--show evi-image ember-view'})['src']
-    except:
-        current_picture = None
-
-    return current_picture"""
-
 # get name
 def get_name(soup):
-
     # get the name from the profile page finding the header with the name
     try:
         name = soup.find('h1', {'class': 'text-heading-xlarge'}).text
 
-        if name[-3:] in ['CFA', 'MBA']:
+        name = name.replace('"', '')
+        name = name.replace(',', '')
+        name = name.strip()
+        name = re.findall(r'[^\W\d_]+|\s|\.', name, re.UNICODE)
+        name = ''.join(name)
+
+        while ("CFA" in name) or ("MBA" in name) or ("CFP" in name):
             name = name[:-3]
+            name = name.strip()
+
+        if "JD" in name:
+            name = name[:-2]
+            name = name.strip()
+
+        if "CAMS" in name:
+            name = name[:-4]
+            name = name.strip()
+
     except:
         name = None
 
-    # clean up name
-    name = name.replace('\n', '')
-    name = name.replace('"', '')
-    name = name.replace(',', '')
-    name = name.strip()
 
     return name
 
 # get current position
-def get_current_position(person, soup, name):
+def get_current_position(soup):
 
     # get the current position from the profile page if a person object is not passed in using a linkedin scraper package
-    if person is None:
-        try:
-            experience_section = soup.find('div', {'id': 'experience'})
-            jobs_div = experience_section.find_next('div', {'class': 'pvs-list__outer-container'}).findChildren()[0]
-            jobs_list = jobs_div.findChildren()
+    try:
+        experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
+        if experience_section[0].find_next_sibling().find_next_sibling():
+            if ("mo" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text):
+                current_position = experience_section[0].find("span").text
+            else:
+                current_position = experience_section[1].find("span").text
+        else:
+            current_position = experience_section[1].find("span").text
 
-            # loop through each list item and get the current position
-            jobs_array = []
-            for job in jobs_list:
-                potential = job.find_next('span', {'class': 'visually-hidden'}).text
-
-                if potential not in jobs_array:
-                    jobs_array.append(potential)
-                    print(jobs_array)
-
-                if 'Present' in potential:
-                    ############################# This is where you need to add a name if it is not getting the position correctly #############################
-                    # this is because their job, due to the way their profile is, is the second to last element in the array
-                    if name in ["Corrine Richter", "Juan Jorge Poémape"]:
-                        current_position = jobs_array[-2]
-                    else:
-                        current_position = jobs_array[-3]
-                    break
-
-            if current_position == None:
-                current_position = jobs_array[2]
-        except:
-            current_position = None
-
-    # get the current position from the person object if it is passed in
-    else:
-        try:
-            current_position = person.experiences[0].position_title
-        except:
-            current_position = None
-
-    # clean up current position
-    current_position = current_position.replace('\n', '')
-    current_position = current_position.replace('"', '')
-    current_position = current_position.replace(',', '')
-    current_position = current_position.strip()
+        current_position = current_position.replace('"', '')
+        current_position = current_position.replace(',', '')
+        current_position = current_position.strip()
+        
+    except:
+        current_position = None
 
     return current_position
 
 # get current company
-def get_current_company(person, soup):
+def get_current_company(soup):
 
-    # get the current company from the profile page if a person object is not passed in using a linkedin scraper package
-    if person is None:
-        try:
-            current_company = soup.find('div', {'class': 'inline-show-more-text inline-show-more-text--is-collapsed inline-show-more-text--is-collapsed-with-line-clamp inline'}).text
-            current_company = current_company.replace('\n', '')
-            current_company = current_company.replace('"', '')
-            current_company = current_company.replace(',', '')
-            current_company = current_company.strip()
-        except:
-            current_company = None
-    
-    # get the current company from the person object if it is passed in
-    else:
-        try:
-            current_company = person.experiences[0].institution_name
+    try:
+        experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
+        if "mo" in experience_section[0].find_next_sibling().find("span").text or "yr" in experience_section[0].find_next_sibling().find("span").text:
+            current_company = experience_section[0].find("span").text
+        else:
+            current_company = experience_section[0].find_next_sibling().find("span").text
+            for i in range(len(current_company)):
+                if current_company[i] == "·":
+                    current_company = current_company[:i]
+                    break
+        
+        current_company = current_company.replace('"', '')
+        current_company = current_company.replace(',', '')
+        current_company = current_company.strip()
 
-            # clean up current company by eliminating the job status
-            if current_company[-9:] in ["Full-time", "Part-time", "Freelance"]:
-                current_company = current_company[:-12]
-            elif current_company[-13:] == "Self-employed":
-                current_company = current_company[:-16]
-            elif current_company[-8:] in ["Contract", "Seasonal"]:
-                current_company = current_company[:-11]
-            elif current_company[-10:] == "Internship":
-                current_company = current_company[:-13]
-            elif current_company[-14:] == "Apprenticeship":
-                current_company = current_company[:-17]
+    except:
+        current_company = None
 
-        except:
-            current_company = None
 
     return current_company
 
 # get graduation year
 def get_graduation_year(soup):
     try:
-        # navigate to the education section
-        education_section = soup.find('div', {'id': "education"})
-        education_section = education_section.find_parent('section', {'class': 'artdeco-card ember-view relative break-words pb3 mt2'})
-
-        # get school list form the profile page and education section
-        education_div = education_section.findChildren()[1]
-        school_list = education_div.find_next('div', {'class': 'pvs-list__outer-container'}).findChildren()[0]
-        school_list = school_list.findChildren()
-
-        # loop through each list item and get the graduation year
-        graduation_year = None
-        for school in school_list:
-            school_name = school.find_next('span', {'class': 'visually-hidden'}).text
-            if school_name[:24] == "Brigham Young University":
-                graduation_year = school.find_next('span', {'class': 'visually-hidden'}).find_next('span', {'class': 'visually-hidden'}).find_next('span', {'class': 'visually-hidden'}).text
-                graduation_year = int(graduation_year[-4:])
+        education_div = soup.select("div.pvs-header__left-container--stack")
+        for div in education_div:
+            if div.div.h2.span.text == "Education":
+                education_div = div
                 break
 
+        education_spans = education_div.parent.parent.find_next_sibling().find_all("span", {'class': 'visually-hidden'})
+
+        for i in range(len(education_spans)):
+            if education_spans[i].text[:24] == "Brigham Young University":
+                graduation_year = education_spans[i + 2].text[-4:]
+                break
+
+        try:
+            graduation_year = int(graduation_year)
+        except:
+            graduation_year = None
+        
     except:
         graduation_year = None
 
     return graduation_year
 
 # this gets profile information from the linkedin profile page using beautiful soup
-def get_profile_data(soup, person):
+def get_profile_data(soup):
 
     # get the profile data calling the functions above
-    # current_picture = get_current_picture(soup)
     name = get_name(soup)
-    current_position = get_current_position(person, soup, name)
-    current_company = get_current_company(person, soup)
+    current_position = get_current_position(soup)
+    current_company = get_current_company(soup)
     graduation_year = get_graduation_year(soup)
+
+    print(name, current_position, current_company, graduation_year)
 
     # return [current_picture, name, current_position, current_company, graduation_year]
     return [name, current_position, current_company, graduation_year]
@@ -222,14 +187,9 @@ if __name__ == "__main__":
         soup = get_soup(driver)
         sleep(5)
 
-        # get the person object from the linkedin scraper package or set it to none if it fails
-        try:
-            person = Person(profile_url, driver=driver, close_on_complete=False)
-        except:
-            person = None
 
         # get the profile data and add it to the dataframe
-        profile_data = get_profile_data(soup, person)
+        profile_data = get_profile_data(soup)
         profile_data.append(profile_url)
         profile_data_df.loc[name] = profile_data
 
