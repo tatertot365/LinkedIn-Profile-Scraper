@@ -62,7 +62,7 @@ def get_name(soup):
         name = re.findall(r'[^\W\d_]+|\s|\.', name, re.UNICODE)
         name = ''.join(name)
 
-        while ("CFA" in name) or ("MBA" in name) or ("CFP" in name):
+        while ("CFA" in name) or ("MBA" in name) or ("CFP" in name) or ("CPA" in name):
             name = name[:-3]
             name = name.strip()
 
