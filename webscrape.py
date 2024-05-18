@@ -1,13 +1,11 @@
 import pandas as pd
+import re
 from time import sleep
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from linkedin_scraper import Person
 from creds import linkedin_username, linkedin_password, imported_profile_list
-from webdriver_manager.chrome import ChromeDriverManager
-import re
 
 
 # this logs into linkedin
@@ -130,8 +128,8 @@ def get_current_company(soup):
 # get graduation year
 def get_graduation_year(soup):
     try:
-        education_div = soup.select("div.pvs-header__left-container--stack")
-        for div in education_div:
+        education_divs = soup.select("div.pvs-header__left-container--stack")
+        for div in education_divs:
             if div.div.h2.span.text == "Education":
                 education_div = div
                 break
