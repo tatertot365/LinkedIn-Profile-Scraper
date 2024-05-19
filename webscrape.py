@@ -60,16 +60,10 @@ def get_name(soup):
         name = re.findall(r'[^\W\d_]+|\s|\.', name, re.UNICODE)
         name = ''.join(name)
 
-        while ("CFA" in name) or ("MBA" in name) or ("CFP" in name) or ("CPA" in name):
-            name = name[:-3]
-            name = name.strip()
+        abbreviations = ["CFA", "MBA", "CFP", "CPA", "JD", "CAMS"]
 
-        if "JD" in name:
-            name = name[:-2]
-            name = name.strip()
-
-        if "CAMS" in name:
-            name = name[:-4]
+        for abbreviation in abbreviations:
+            name = name.replace(abbreviation, '')
             name = name.strip()
 
     except:
