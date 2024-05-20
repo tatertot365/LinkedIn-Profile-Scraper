@@ -1,15 +1,16 @@
 import pandas as pd
+import boto3
 import re
 from time import sleep
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from creds import linkedin_username, linkedin_password, imported_profile_list
+from creds import linkedin_username, linkedin_password, imported_profile_list, aws_s3_secret_access_key_id, aws_s3_access_key, aws_s3_bucket
 
 
 # this logs into linkedin
-def login():
+def login() -> webdriver.Chrome:
     opts = Options()
 
     # This sets up the driver and opens the browser
@@ -41,15 +42,29 @@ def login():
     return driver
 
 # get page soup
-def get_soup(driver):
+def get_soup(driver: webdriver.Chrome) -> BeautifulSoup:
 
     # get the page source and parse it with beautiful soup
     soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     return soup
 
+# this gets profile information from the linkedin profile page using beautiful soup
+def get_profile_data(soup: BeautifulSoup) -> list:
+
+    # get the profile data calling the functions above
+    name = get_name(soup)
+    current_position = get_current_position(soup)
+    current_company = get_current_company(soup)
+    graduation_year = get_graduation_year(soup)
+
+    print(name, current_position, current_company, graduation_year)
+
+    # return [current_picture, name, current_position, current_company, graduation_year]
+    return [name, current_position, current_company, graduation_year]
+
 # get name
-def get_name(soup):
+def get_name(soup: BeautifulSoup) -> str:
     # get the name from the profile page finding the header with the name
     try:
         name = soup.find('h1', {'class': 'text-heading-xlarge'}).text
@@ -73,7 +88,7 @@ def get_name(soup):
     return name
 
 # get current position
-def get_current_position(soup):
+def get_current_position(soup: BeautifulSoup) -> str:
 
     try:
         experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
@@ -105,7 +120,7 @@ def get_current_position(soup):
     return current_position
 
 # get current company
-def get_current_company(soup):
+def get_current_company(soup: BeautifulSoup) -> str:
 
     def extract_current_company(text):
         for i in range(len(text)):
@@ -138,7 +153,7 @@ def get_current_company(soup):
     return current_company
 
 # get graduation year
-def get_graduation_year(soup):
+def get_graduation_year(soup: BeautifulSoup) -> int:
     try:
         education_divs = soup.select("div.pvs-header__left-container--stack")
         for div in education_divs:
@@ -163,30 +178,8 @@ def get_graduation_year(soup):
 
     return graduation_year
 
-# this gets profile information from the linkedin profile page using beautiful soup
-def get_profile_data(soup):
-
-    # get the profile data calling the functions above
-    name = get_name(soup)
-    current_position = get_current_position(soup)
-    current_company = get_current_company(soup)
-    graduation_year = get_graduation_year(soup)
-
-    print(name, current_position, current_company, graduation_year)
-
-    # return [current_picture, name, current_position, current_company, graduation_year]
-    return [name, current_position, current_company, graduation_year]
-
-
-if __name__ == "__main__":
-    # login to linkedin
-    driver = login()
-
-    # list of profiles to scrape using the linkedin profile url
-    profile_list = imported_profile_list
+def add_data_to_dataframe(profile_list: list, driver: webdriver.Chrome) -> pd.DataFrame:
     profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
-
-    # loop through each profile in the list
     for name in profile_list:
         driver.get("https://www.linkedin.com/in/" + name)
         sleep(5)
@@ -203,6 +196,9 @@ if __name__ == "__main__":
         profile_data.append(profile_url)
         profile_data_df.loc[name] = profile_data
 
+    return profile_data_df
+
+def sort_df_by_last_name(profile_data_df: pd.DataFrame) -> pd.DataFrame:
     def get_last_name(name):
         return name.split()[-1]
     
@@ -211,8 +207,28 @@ if __name__ == "__main__":
     profile_data_df.sort_values(by=['last_name'], inplace=True)
     profile_data_df.drop('last_name', axis=1, inplace=True)
 
+    return profile_data_df
+
+def upload_profile_data_to_AWS_S3() -> None:
+    s3 = boto3.client('s3', aws_access_key_id=aws_s3_secret_access_key_id, aws_secret_access_key=aws_s3_access_key)
+
+    s3.upload_file('profile_data.csv', aws_s3_bucket, 'profile_data.csv')
+
+if __name__ == "__main__":
+    # login to linkedin
+    driver = login()
+
+    # list of profiles to scrape using the linkedin profile url
+    profile_data_df = add_data_to_dataframe(imported_profile_list, driver)
+
+    # sort the data by last name
+    profile_data_df_sorted = sort_df_by_last_name(profile_data_df)
+
     # save the data to a csv file
-    profile_data_df.to_csv('profile_data.csv', index=False)
+    profile_data_df_sorted.to_csv('profile_data.csv', index=False)
 
     # close the browser
     driver.quit()
+
+    # upload the data to AWS S3
+    upload_profile_data_to_AWS_S3()
