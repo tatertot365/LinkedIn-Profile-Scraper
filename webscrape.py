@@ -58,9 +58,6 @@ def get_profile_data(soup: BeautifulSoup) -> list:
     current_company = get_current_company(soup)
     graduation_year = get_graduation_year(soup)
 
-    print(name, current_position, current_company, graduation_year)
-
-    # return [current_picture, name, current_position, current_company, graduation_year]
     return [name, current_position, current_company, graduation_year]
 
 # get name
