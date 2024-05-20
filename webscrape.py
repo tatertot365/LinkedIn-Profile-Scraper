@@ -66,7 +66,7 @@ def get_name(soup):
             name = name.replace(abbreviation, '')
             name = name.strip()
 
-    except:
+    except Exception:
         name = None
 
 
@@ -75,22 +75,31 @@ def get_name(soup):
 # get current position
 def get_current_position(soup):
 
-    # get the current position from the profile page if a person object is not passed in using a linkedin scraper package
     try:
         experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
-        if experience_section[0].find_next_sibling().find_next_sibling():
+        if experience_section[0].find_next_sibling().find_next_sibling() and "Top" not in experience_section[0].find("span").text:
             if ("mo" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text):
                 current_position = experience_section[0].find("span").text
             else:
                 current_position = experience_section[1].find("span").text
         else:
-            current_position = experience_section[1].find("span").text
+            if "Top" in experience_section[0].find("span").text:
+                if experience_section[1].find_next_sibling().find_next_sibling():
+                    if ("mo" in experience_section[1].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[1].find_next_sibling().find_next_sibling().find("span").text):
+                        current_position = experience_section[1].find("span").text
+                    else:
+                        current_position = experience_section[2].find("span").text
+                else:
+                    current_position = experience_section[2].find("span").text
+
+            else:
+                current_position = experience_section[1].find("span").text
 
         current_position = current_position.replace('"', '')
         current_position = current_position.replace(',', '')
         current_position = current_position.strip()
-        
-    except:
+
+    except Exception:
         current_position = None
 
     return current_position
@@ -98,24 +107,33 @@ def get_current_position(soup):
 # get current company
 def get_current_company(soup):
 
+    def extract_current_company(text):
+        for i in range(len(text)):
+            if text[i] == "·":
+                text = text[:i]
+                break
+        return text
+
     try:
         experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
-        if "mo" in experience_section[0].find_next_sibling().find("span").text or "yr" in experience_section[0].find_next_sibling().find("span").text:
+
+        if ("mo" in experience_section[0].find_next_sibling().find("span").text) or ("yr" in experience_section[0].find_next_sibling().find("span").text) and ("Top" not in experience_section[0].find("span").text):
             current_company = experience_section[0].find("span").text
         else:
-            current_company = experience_section[0].find_next_sibling().find("span").text
-            for i in range(len(current_company)):
-                if current_company[i] == "·":
-                    current_company = current_company[:i]
-                    break
+            if "Top" in experience_section[0].find("span").text:
+                if ("mo" in experience_section[1].find_next_sibling().find("span").text) or ("yr" in experience_section[1].find_next_sibling().find("span").text):
+                    current_company = experience_section[1].find("span").text
+                else:
+                    current_company = extract_current_company(experience_section[1].find_next_sibling().find("span").text)
+            else:
+                current_company = extract_current_company(experience_section[0].find_next_sibling().find("span").text)
         
         current_company = current_company.replace('"', '')
         current_company = current_company.replace(',', '')
         current_company = current_company.strip()
 
-    except:
+    except Exception:
         current_company = None
-
 
     return current_company
 
@@ -137,10 +155,10 @@ def get_graduation_year(soup):
 
         try:
             graduation_year = int(graduation_year)
-        except:
+        except ValueError:
             graduation_year = None
         
-    except:
+    except Exception:
         graduation_year = None
 
     return graduation_year
