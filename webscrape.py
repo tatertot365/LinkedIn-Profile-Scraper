@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from creds import linkedin_username, linkedin_password, imported_profile_list, aws_s3_secret_access_key_id, aws_s3_access_key, aws_s3_bucket
+from creds import linkedin_username, linkedin_password, li_at_cookie, imported_profile_list, aws_s3_secret_access_key_id, aws_s3_access_key, aws_s3_bucket
 
 
 # this logs into linkedin
@@ -16,6 +16,16 @@ def login() -> webdriver.Chrome:
     # This sets up the driver and opens the browser
     # driver = webdriver.Chrome(options=opts, executable_path=ChromeDriverManager().install())
     driver = webdriver.Chrome(options=opts)
+
+    if li_at_cookie:
+        driver.delete_all_cookies()
+        driver.get("https://www.linkedin.com")
+        sleep(5)
+        driver.add_cookie({'name': 'li_at', 'value': li_at_cookie, 'domain': '.linkedin.com'})
+        sleep(2)
+        driver.refresh()
+        sleep(2)
+        return driver
 
     driver.get("https://www.linkedin.com/login")
     sleep(5)
@@ -37,7 +47,7 @@ def login() -> webdriver.Chrome:
     # Sign in button is clicked
     sign_in_button.click()
 
-    sleep(10)
+    sleep(5)
 
     return driver
 
@@ -57,6 +67,8 @@ def get_profile_data(soup: BeautifulSoup) -> list:
     current_position = get_current_position(soup)
     current_company = get_current_company(soup)
     graduation_year = get_graduation_year(soup)
+
+    print(name, current_position, current_company, graduation_year)
 
     return [name, current_position, current_company, graduation_year]
 
@@ -89,23 +101,28 @@ def get_current_position(soup: BeautifulSoup) -> str:
 
     try:
         experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
-        if experience_section[0].find_next_sibling().find_next_sibling() and "Top" not in experience_section[0].find("span").text:
-            if ("mo" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[0].find_next_sibling().find_next_sibling().find("span").text):
-                current_position = experience_section[0].find("span").text
+        # if studied, work, or group is in the first experience section, then the current position is in the second experience section
+        i = 0
+        while ("stud" in experience_section[i].find("span").text.lower()) or ("work" in experience_section[i].find("span").text.lower()) or ("group" in experience_section[i].find("span").text.lower()): 
+            i += 1
+
+        if experience_section[i].find_next_sibling().find_next_sibling() and "Top" not in experience_section[i].find("span").text:
+            if ("mo" in experience_section[i].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[i].find_next_sibling().find_next_sibling().find("span").text):
+                current_position = experience_section[i].find("span").text
             else:
-                current_position = experience_section[1].find("span").text
+                current_position = experience_section[i+1].find("span").text
         else:
-            if "Top" in experience_section[0].find("span").text:
-                if experience_section[1].find_next_sibling().find_next_sibling():
-                    if ("mo" in experience_section[1].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[1].find_next_sibling().find_next_sibling().find("span").text):
-                        current_position = experience_section[1].find("span").text
+            if "Top" in experience_section[i].find("span").text:
+                if experience_section[i+1].find_next_sibling().find_next_sibling():
+                    if ("mo" in experience_section[i+1].find_next_sibling().find_next_sibling().find("span").text) or ("yr" in experience_section[i+1].find_next_sibling().find_next_sibling().find("span").text):
+                        current_position = experience_section[i+1].find("span").text
                     else:
-                        current_position = experience_section[2].find("span").text
+                        current_position = experience_section[i+2].find("span").text
                 else:
-                    current_position = experience_section[2].find("span").text
+                    current_position = experience_section[i+2].find("span").text
 
             else:
-                current_position = experience_section[1].find("span").text
+                current_position = experience_section[i+1].find("span").text
 
         current_position = current_position.replace('"', '')
         current_position = current_position.replace(',', '')
@@ -129,16 +146,20 @@ def get_current_company(soup: BeautifulSoup) -> str:
     try:
         experience_section = soup.select("div.display-flex.flex-wrap.align-items-center.full-height")
 
-        if ("mo" in experience_section[0].find_next_sibling().find("span").text) or ("yr" in experience_section[0].find_next_sibling().find("span").text) and ("Top" not in experience_section[0].find("span").text):
-            current_company = experience_section[0].find("span").text
+        i = 0
+        while ("stud" in experience_section[i].find("span").text.lower()) or ("work" in experience_section[i].find("span").text.lower()) or ("group" in experience_section[i].find("span").text.lower()): 
+            i += 1
+
+        if ("mo" in experience_section[i].find_next_sibling().find("span").text) or ("yr" in experience_section[i].find_next_sibling().find("span").text) and ("Top" not in experience_section[i].find("span").text):
+            current_company = experience_section[i].find("span").text
         else:
-            if "Top" in experience_section[0].find("span").text:
-                if ("mo" in experience_section[1].find_next_sibling().find("span").text) or ("yr" in experience_section[1].find_next_sibling().find("span").text):
-                    current_company = experience_section[1].find("span").text
+            if "Top" in experience_section[i].find("span").text:
+                if ("mo" in experience_section[i+1].find_next_sibling().find("span").text) or ("yr" in experience_section[i+1].find_next_sibling().find("span").text):
+                    current_company = experience_section[i+1].find("span").text
                 else:
-                    current_company = extract_current_company(experience_section[1].find_next_sibling().find("span").text)
+                    current_company = extract_current_company(experience_section[i+1].find_next_sibling().find("span").text)
             else:
-                current_company = extract_current_company(experience_section[0].find_next_sibling().find("span").text)
+                current_company = extract_current_company(experience_section[i].find_next_sibling().find("span").text)
         
         current_company = current_company.replace('"', '')
         current_company = current_company.replace(',', '')
@@ -176,10 +197,11 @@ def get_graduation_year(soup: BeautifulSoup) -> int:
     return graduation_year
 
 def add_data_to_dataframe(profile_list: list, driver: webdriver.Chrome) -> pd.DataFrame:
-    profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
+    # profile_data_df = pd.DataFrame(columns=['name', 'current_position', 'current_company', 'graduation_year', 'profile_url'])
+    profile_data_df = pd.read_csv('profile_data.csv')
     for name in profile_list:
         driver.get("https://www.linkedin.com/in/" + name)
-        sleep(5)
+        sleep(8)
 
         profile_url = "https://www.linkedin.com/in/" + name
 
